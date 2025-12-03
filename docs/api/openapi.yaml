@@ -1,0 +1,176 @@
+
+openapi: 3.0.0
+info:
+  title: MyTaskApp - Task Management API
+  version: 1.0.0
+  description: API для керування завданнями (CRUD) авторизованих користувачів.
+servers:
+  - url: /api/v1
+    description: Production Server
+
+paths:
+  /tasks:
+    get:
+      summary: Отримати список завдань
+      operationId: listTasks
+      tags: [Tasks]
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200':
+          description: Успішно повертає список завдань.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskResponse'
+        '401':
+          description: Неавторизований доступ.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Створити нове завдання
+      operationId: createTask
+      tags: [Tasks]
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreateRequest'
+      responses:
+        '201':
+          description: Завдання успішно створено.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '400':
+          description: Помилка валідації вхідних даних.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /tasks/{taskId}:
+    parameters:
+      - in: path
+        name: taskId
+        required: true
+        schema: { type: string, format: uuid }
+        description: Унікальний ідентифікатор завдання.
+    get:
+      summary: Отримати завдання за ID
+      operationId: getTaskById
+      tags: [Tasks]
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200':
+          description: Успішно повертає завдання.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '404':
+          description: Завдання не знайдено.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      summary: Часткове оновлення завдання
+      operationId: updateTask
+      tags: [Tasks]
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdateRequest'
+      responses:
+        '200':
+          description: Завдання успішно оновлено.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '400':
+          description: Помилка валідації.
+        '404':
+          description: Завдання не знайдено.
+    delete:
+      summary: Видалити завдання
+      operationId: deleteTask
+      tags: [Tasks]
+      security: [{ cookieAuth: [] }]
+      responses:
+        '204':
+          description: Завдання успішно видалено (не повертає вмісту).
+        '404':
+          description: Завдання не знайдено.
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: session
+  schemas:
+    TaskCreateRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          description: Назва завдання.
+          minLength: 1
+        due_date:
+          type: string
+          format: date
+          nullable: true
+          description: Очікувана дата виконання.
+
+    TaskUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Нова назва завдання.
+          minLength: 1
+        is_completed:
+          type: boolean
+          description: Чи виконано завдання.
+
+    TaskResponse:
+      type: object
+      required: [id, user_id, title, is_completed, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        user_id: { type: integer }
+        title: { type: string }
+        is_completed: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time, nullable: true }
+
+    ErrorResponse:
+      type: object
+      required: [error, code]
+      properties:
+        error:
+          type: string
+          description: Короткий опис помилки (наприклад, 'ValidationError').
+        code:
+          type: string
+          description: Унікальний внутрішній код помилки (наприклад, 'TITLE_REQUIRED').
+        details:
+          type: array
+          description: Деталі помилки (наприклад, для валідації).
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
