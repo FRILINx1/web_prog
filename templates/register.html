@@ -1,14 +1,34 @@
 <!DOCTYPE html>
 <html lang="uk">
-<head><meta charset="UTF-8"><title>Реєстрація</title></head>
+<head>
+    <meta charset="UTF-8">
+    <title>Реєстрація</title>
+    <style>
+        .warning-banner {
+            padding: 10px;
+            margin-bottom: 15px;
+            background-color: #ffe0b2; /* Світло-помаранчевий фон */
+            color: #b71c1c; /* Темно-червоний текст */
+            border: 1px solid #ff9800;
+            border-radius: 4px;
+        }
+    </style>
+</head>
 <body>
-  <h1>Реєстрація</h1>
-  <form method="POST">
-    <input type="text" name="username" placeholder="Логін" required>
-    <input type="password" name="password" placeholder="Пароль" required>
-    <button type="submit">Зареєструватися</button>
-  </form>
-  <a href="{{ url_for('login') }}">Увійти</a>
+    <h1>Реєстрація</h1>
+
+    <div id="service-status-banner" class="warning-banner" style="display: none;">
+        </div>
+
+    <form method="POST">
+        <input type="text" name="username" placeholder="Логін" required>
+        <input type="password" name="password" placeholder="Пароль" required>
+
+        <button type="submit" id="register-submit-button">Зареєструватися</button>
+    </form>
+
+    <a href="{{ url_for('login') }}">Увійти</a>
+
+    <script src="{{ url_for('static', filename='health_check.js') }}"></script>
 </body>
 </html>
-

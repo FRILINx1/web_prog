@@ -20,18 +20,14 @@ app.secret_key = "specificgroupofpeople"
 #5
 @app.before_request
 def setup_request_context():
+    time.sleep(0.2)
 
     request_id = request.headers.get("X-Request-Id") or str(uuid.uuid4())
     g.request_id = request_id
 
     r = random.random()
 
-    if r < 0.15:
-        # time.sleep(1.2 + random.random() * 0.8)
-        pass
-
-
-    if r > 0.90:
+    if r > 0.95:
         err = "SERVER_UNAVAILABLE" if random.random() < 0.5 else "UNEXPECTED_ERROR"
         code = 503 if err == "SERVER_UNAVAILABLE" else 500
 
@@ -126,7 +122,6 @@ def home():
 
 @app.route("/health", methods=["GET"])
 def health_check():
-    """Перевірка стану застосунку."""
     # Завдання: GET /health
     return jsonify({
         "status": "ok",
