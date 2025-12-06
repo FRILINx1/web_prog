@@ -1,40 +1,36 @@
 from flask import Blueprint, request, jsonify, g, session
-import uuid
-from datetime import datetime
 import json
-# ВАЖЛИВО: Імпортуємо сховище та функції з app.py
-from app import IDEMPOTENCY_STORE, get_db_connection
+import uuid
+from infrastructure.database import get_db_connection
+from state import IDEMPOTENCY_STORE
+from service.task_service import TaskService
 
 tasks_api = Blueprint('tasks_api', __name__)
+task_service = TaskService()
 
 
-# --- ДОПОМІЖНІ ФУНКЦІЇ ---
+
+
 def authenticate_api():
     """Перевіряє авторизацію через сесію."""
     if 'user_id' not in session:
-        # Повертаємо 401 Unauthorized для API
         return jsonify({
             "error": "Unauthorized",
             "code": "AUTH_REQUIRED",
             "requestId": g.request_id
         }), 401
-    return None  # Успішна авторизація
+    return None
 
 
-def serialize_task(task_data, request_id):
-    """Форматує дані завдання відповідно до TaskResponse DTO."""
-    return {
-        "id": task_data['id'],
-        "user_id": task_data['user_id'],
-        "title": task_data['title'],
-        "is_completed": task_data.get('is_completed', False),
-        "created_at": task_data.get('created_at'),
-        "updated_at": task_data.get('updated_at', None),
-        "requestId": request_id
-    }
+def _task_error(message: str, code: str, status_code: int = 400, details=None):
+    return jsonify({
+        "error": message,
+        "code": code,
+        "details": details,
+        "requestId": g.request_id
+    }), status_code
 
 
-# --- ENDPOINT: Ідемпотентний POST /tasks ---
 
 @tasks_api.route("/tasks", methods=["POST"])
 def create_task_idempotent():
@@ -43,67 +39,37 @@ def create_task_idempotent():
     if auth_response:
         return auth_response
 
-    # 2. Перевірка Idempotency-Key
     idem_key = request.headers.get("Idempotency-Key")
     if not idem_key:
-        return jsonify({
-            "error": "Idempotency key is required",
-            "code": "IDEMPOTENCY_KEY_REQUIRED",
-            "requestId": g.request_id
-        }), 400
+        return _task_error("Idempotency key is required", "IDEMPOTENCY_KEY_REQUIRED", 400)
 
-    # 3. Перевірка сховища для ідемпотентності
     if idem_key in IDEMPOTENCY_STORE:
-        # Повторний запит: повертаємо збережений результат
+        print(f"INFO: Reusing idempotent result for key {idem_key}")
         status, payload = IDEMPOTENCY_STORE[idem_key]
         payload["requestId"] = g.request_id
         return jsonify(payload), status
 
-    # 4. Бізнес-логіка (якщо ключ новий)
+    # 4. Бізнес-логіка
     try:
         data = request.get_json()
-        title = data.get("title")
+        title = data.get("title", "")
 
-        # Валідація DTO
-        if not title or len(title.strip()) == 0:
-            return jsonify({
-                "error": "Validation Error",
-                "code": "TITLE_REQUIRED",
-                "details": [{"field": "title", "message": "Title is required and cannot be empty"}],
-                "requestId": g.request_id
-            }), 400
+        new_task = task_service.create_task(session['user_id'], title)
 
-        # Симуляція Service/DB-логіки (заміна на реальну логіку у service/task_service.py)
-        task_id = str(uuid.uuid4())
-        new_task_data = {
-            "id": task_id,
-            "user_id": session['user_id'],
-            "title": title.strip(),
-            "is_completed": False,
-            "created_at": datetime.now().isoformat() + "Z"
-        }
+        response_data = new_task.to_dict()
+        response_data["requestId"] = g.request_id
 
-        # ⚠️ Тут має бути виклик service/task_service.py для збереження у БД
-        # task_service.create_task(session['user_id'], title)
-
-        # 5. Збереження результату та повернення
-        response_data = serialize_task(new_task_data, g.request_id)
-
-        # Зберігаємо статус 201 та тіло відповіді у сховищі
         IDEMPOTENCY_STORE[idem_key] = (201, response_data)
 
         return jsonify(response_data), 201
 
+    except ValueError as ve:
+        msg, code = str(ve).split(': ')
+        return _task_error("Validation Error", code, 400, details=[{"field": "title", "message": msg}])
+
     except Exception as e:
-        # Непередбачувана помилка під час обробки
-        return jsonify({
-            "error": "Unexpected Error",
-            "code": "TASK_CREATION_FAILED",
-            "requestId": g.request_id
-        }), 500
+        return _task_error("Unexpected Error", "TASK_CREATION_FAILED", 500)
 
-
-# --- ENDPOINT: GET /tasks (Базовий Read) ---
 
 @tasks_api.route("/tasks", methods=["GET"])
 def list_tasks():
@@ -111,13 +77,12 @@ def list_tasks():
     if auth_response:
         return auth_response
 
-    # ⚠️ Тут має бути виклик service/task_service.py для отримання завдань з БД
-    # current_tasks = task_service.get_all_tasks(session['user_id'])
+    task_service.get_all_tasks(session['user_id'])
 
-    # Симуляція порожнього списку
+    # Симуляція:
     tasks = []
 
-    response_list = [serialize_task(t, g.request_id) for t in tasks]
+    response_list = [t.to_dict() for t in tasks]
     return jsonify(response_list), 200
 
-# ⚠️ Додайте роути для GET /tasks/{id}, PATCH /tasks/{id}, DELETE /tasks/{id}
+#  GET /tasks/{id}, PATCH /tasks/{id}, DELETE /tasks/{id}

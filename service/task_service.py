@@ -1,31 +1,32 @@
-from domain.task import Task
+from domain.task import Task, TaskStatus
+from state import IDEMPOTENCY_STORE
+from infrastructure.database import get_db_connection
+from typing import List, Optional
 
-
-# from repository.task_repository import TaskRepository  # В ідеалі, тут має бути репозиторій
 
 class TaskService:
-    """
-    Шар бізнес-логіки для керування завданнями (Use Cases).
-    """
 
-    def __init__(self, task_repository=None):
-        # self.repo = task_repository or TaskRepository() # Використовуємо репозиторій для БД
+    def __init__(self):
         pass
 
     def create_task(self, user_id: int, title: str) -> Task:
-        """Створює нове завдання і зберігає його в БД."""
         if not title or len(title.strip()) < 3:
-            raise ValueError("Title must be at least 3 characters long.")
+            raise ValueError("TITLE_REQUIRED: Title must be at least 3 characters long.")
 
-        # Генерація UUID має бути тут, а не в роуті
-        task_id = str(uuid.uuid4())
-        new_task = Task(task_id=task_id, user_id=user_id, title=title.strip())
+        new_task = Task(user_id=user_id, title=title.strip())
 
-        # self.repo.save(new_task) # Зберігання у БД
+        conn = get_db_connection()
+        try:
+            conn.execute(
+                "INSERT INTO tasks (id, user_id, title, is_completed, created_at) VALUES (?, ?, ?, ?, ?)",
+                (new_task.id, new_task.user_id, new_task.title,
+                 new_task.status.value, new_task.created_at.isoformat())
+            )
+            conn.commit()
+        except Exception as e:
+            conn.close()
+            raise Exception(f"DB_SAVE_ERROR: Failed to save task: {e}")
+        finally:
+            conn.close()
 
         return new_task
-
-    def get_all_tasks(self, user_id: int):
-        """Отримує всі завдання для конкретного користувача."""
-        # return self.repo.find_by_user_id(user_id)
-        pass  # Заглушка
