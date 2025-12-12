@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from service.task_service import TaskService
 from domain.task import Task
-from infrastructure.database import get_db_connection
+
 
 
 

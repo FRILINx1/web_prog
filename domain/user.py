@@ -1,9 +1,14 @@
-class User:
-    def __init__(self, user_id: int, username: str, hashed_password: bytes):
-        self.id = user_id
-        self.username = username
-        self.hashed_password = hashed_password
+from extensions import db
 
-    def check_password(self, password: str) -> bool:
-        print(f"INFO: Checking password for user {self.username}")
-        return True
+
+class User(db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(100), unique=True, nullable=False)
+    password = db.Column(db.LargeBinary, nullable=False)
+
+
+    tasks = db.relationship('Task', backref='owner', lazy='dynamic')
+
+    def __repr__(self):
+        return f'<User {self.username}>'

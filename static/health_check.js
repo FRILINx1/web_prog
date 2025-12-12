@@ -1,5 +1,5 @@
 
-const HEALTH_TIMEOUT_MS = 3000;
+const HEALTH_TIMEOUT_MS = 4000;
 const DEGRADED_BANNER_ID = 'service-status-banner';
 const SUBMIT_BUTTON_SELECTOR = 'button[type="submit"]';
 

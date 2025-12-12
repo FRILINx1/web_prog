@@ -1,7 +1,6 @@
 from flask import Blueprint, request, jsonify, g, session
 import json
 import uuid
-from infrastructure.database import get_db_connection
 from state import IDEMPOTENCY_STORE
 from service.task_service import TaskService
 

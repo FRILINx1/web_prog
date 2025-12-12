@@ -1,6 +1,7 @@
 from domain.task import Task, TaskStatus
 from state import IDEMPOTENCY_STORE
 from infrastructure.database import get_db_connection
+from extensions import db
 from typing import List, Optional
 
 

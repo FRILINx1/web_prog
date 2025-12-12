@@ -1,33 +1,49 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, g
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, has_request_context, g
 import sqlite3
 import bcrypt
 import uuid
 import time
 import random
 from datetime import datetime
+from flask_sqlalchemy import SQLAlchemy
+from extensions import db
 from infrastructure.database import get_db_connection
+from state import IDEMPOTENCY_STORE
+from api.task_routes import tasks_api
+from config import Config
+from infrastructure.database import get_db_connection
+
 
 #4
 from api.task_routes import tasks_api
 
 
 app = Flask(__name__)
+app.config.from_object(Config)
 app.secret_key = "specificgroupofpeople"
 
 
 
 
-#5
+
+def create_initial_tables():
+    with app.app_context():
+        import domain.user
+        import domain.task
+
+        db.create_all()
+
+
 @app.before_request
 def setup_request_context():
-    time.sleep(0.2)
+    time.sleep(0.0)
 
     request_id = request.headers.get("X-Request-Id") or str(uuid.uuid4())
     g.request_id = request_id
 
     r = random.random()
 
-    if r > 0.95:
+    if r > 2:
         err = "SERVER_UNAVAILABLE" if random.random() < 0.5 else "UNEXPECTED_ERROR"
         code = 503 if err == "SERVER_UNAVAILABLE" else 500
 
@@ -51,16 +67,18 @@ def handle_error(e):
     code = getattr(e, 'code', 500)
     name = getattr(e, 'name', 'Internal Server Error')
 
+    request_id = "UNKNOWN_REQUEST_ID"
     response_body = {
         "error": name,
         "code": f"HTTP_{code}",
-        "requestId": g.request_id
+        "requestId": request_id
     }
     return jsonify(response_body), code
 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    from domain.user import User
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"].encode("utf-8")
@@ -68,14 +86,14 @@ def register():
 
         conn = get_db_connection()
         try:
-            conn.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed))
-            conn.commit()
+            new_user = User(username=username, password=hashed)
+            db.session.add(new_user)
+            db.session.commit()
         except sqlite3.IntegrityError:
             conn.close()
             return "Помилка: Користувач з таким логіном вже існує", 400
         except Exception as e:
-            conn.close()
-            return f"Помилка: {e}", 500
+            db.session.rollback()
         conn.close()
         return redirect(url_for("login"))
     return render_template("register.html")
@@ -83,17 +101,16 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    from domain.user import User
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"].encode("utf-8")
 
-        conn = get_db_connection()
-        user = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
-        conn.close()
+        user = User.query.filter_by(username=username).first()
 
-        if user and bcrypt.checkpw(password, user["password"]):
-            session["user_id"] = user["id"]
-            session["username"] = user["username"]
+        if user and bcrypt.checkpw(password, user.password):
+            session["user_id"] = user.id
+            session["username"] = user.username
             return redirect(url_for("dashboard"))
         else:
             return "Неправильний логін або пароль", 401
@@ -132,4 +149,6 @@ def health_check():
 app.register_blueprint(tasks_api, url_prefix='/api/v1')
 
 if __name__ == "__main__":
+    db.init_app(app)
+   # create_initial_tables()
     app.run(debug=True)

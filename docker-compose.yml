@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mytaskapp-api
+    container_name: mytaskapp_api
+    
+
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/mydatabase
+      - FLASK_ENV=production
+      - SECRET_KEY=supersecretkey
+      
+
+    ports:
+      - "8080:5000"
+      
+
+    depends_on:
+      - db
+
+
+  db:
+    image: postgres:14-alpine
+    container_name: mytaskapp_db
+    
+
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydatabase
+      
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+
+
+volumes:
+
+  postgres_data:

@@ -1,6 +1,7 @@
 from enum import Enum
 from datetime import datetime
 import uuid
+from extensions import db
 
 
 class TaskStatus(Enum):
@@ -9,21 +10,19 @@ class TaskStatus(Enum):
     COMPLETED = "completed"
 
 
-class Task:
+class Task(db.Model):  # ❗ ЗМІНА: Наслідуємо від db.Model
+    __tablename__ = 'tasks'
 
+    # 1. Стовпці
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # ❗ FOREIGN KEY
+    title = db.Column(db.String(255), nullable=False)
 
-    def __init__(self, user_id: int, title: str,
-                 task_id: str = None,
-                 status: TaskStatus = TaskStatus.ACTIVE,
-                 created_at: datetime = None):
+    # Зберігаємо статус як рядок
+    status = db.Column(db.Enum(TaskStatus), default=TaskStatus.ACTIVE, nullable=False)
 
-        # 3
-        self.id = task_id if task_id else str(uuid.uuid4())
-        self.user_id = user_id
-        self.title = title
-        self.status = status
-        self.created_at = created_at if created_at else datetime.now()
-        self.updated_at = None
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True)
 
     def mark_completed(self):
 
