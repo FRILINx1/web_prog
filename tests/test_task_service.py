@@ -1,8 +1,8 @@
-
 import pytest
 from unittest.mock import patch, MagicMock
 from service.task_service import TaskService
 from domain.task import Task
+from extensions import db
 
 
 
@@ -13,14 +13,12 @@ def task_service_fixture():
 
 
 
-@patch('service.task_service.get_db_connection')
-def test_create_task_success(mock_get_db, task_service_fixture):
+@patch.object(db.session, 'commit')
+@patch.object(db.session, 'add')
+def test_create_task_success(mock_db_add, mock_db_commit, task_service_fixture):
 
     user_id = 1
-    title = "перевірка"
-
-    mock_conn = MagicMock()
-    mock_get_db.return_value = mock_conn
+    title = "Купити продукти"
 
 
     new_task = task_service_fixture.create_task(user_id, title)
@@ -31,9 +29,11 @@ def test_create_task_success(mock_get_db, task_service_fixture):
     assert new_task.title == title
     assert new_task.user_id == user_id
 
-    mock_conn.execute.assert_called_once()
-    mock_conn.commit.assert_called_once()
-    mock_conn.close.assert_called_once()
+
+    mock_db_add.assert_called_once_with(new_task)
+    mock_db_commit.assert_called_once()
+
+
 
 
 

@@ -17,8 +17,8 @@ class TaskService:
         new_task = Task(user_id=user_id, title=title.strip())
 
         try:
-            db.session.add(new_task)  # Додаємо об'єкт до сесії
-            db.session.commit()  #
+            db.session.add(new_task)
+            db.session.commit()
         except Exception as e:
             db.session.rollback()
             raise Exception(f"DB_SAVE_ERROR: Failed to save task via SQLAlchemy: {e}")

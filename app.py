@@ -7,11 +7,9 @@ import random
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from extensions import db
-from infrastructure.database import get_db_connection
 from state import IDEMPOTENCY_STORE
 from api.task_routes import tasks_api
 from config import Config
-from infrastructure.database import get_db_connection
 
 
 #4
