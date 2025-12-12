@@ -1,6 +1,6 @@
 from domain.task import Task, TaskStatus
 from state import IDEMPOTENCY_STORE
-from infrastructure.database import get_db_connection
+
 from extensions import db
 from typing import List, Optional
 
@@ -16,18 +16,29 @@ class TaskService:
 
         new_task = Task(user_id=user_id, title=title.strip())
 
-        conn = get_db_connection()
         try:
-            conn.execute(
-                "INSERT INTO tasks (id, user_id, title, is_completed, created_at) VALUES (?, ?, ?, ?, ?)",
-                (new_task.id, new_task.user_id, new_task.title,
-                 new_task.status.value, new_task.created_at.isoformat())
-            )
-            conn.commit()
+            db.session.add(new_task)  # Додаємо об'єкт до сесії
+            db.session.commit()  #
         except Exception as e:
-            conn.close()
-            raise Exception(f"DB_SAVE_ERROR: Failed to save task: {e}")
-        finally:
-            conn.close()
+            db.session.rollback()
+            raise Exception(f"DB_SAVE_ERROR: Failed to save task via SQLAlchemy: {e}")
+
 
         return new_task
+
+    def get_all_tasks(self, user_id: int) -> List[Task]:
+        return Task.query.filter_by(user_id=user_id).order_by(Task.created_at.desc()).all()
+
+    def delete_task(self, task_id: str, user_id: int) -> bool:
+        task = Task.query.filter_by(id=task_id, user_id=user_id).first()
+
+        if not task:
+            return False
+
+        try:
+            db.session.delete(task)
+            db.session.commit()
+            return True
+        except Exception:
+            db.session.rollback()
+            raise Exception("DB_DELETE_ERROR")
