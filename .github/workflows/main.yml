@@ -77,11 +77,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            # Тег 'latest' для main/master
             type=raw,value=latest,enable={{is_default_branch}}
-            # Тег на основі SHA коміту (приклад: sha-abc1234)
             type=sha,format=short,prefix=sha-
-            # Тег на основі Git-тегів (v1.2.3)
             type=semver,pattern={{version}}
             type=semver,pattern={{raw}}
 
@@ -93,3 +90,34 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Update Job Summary with Artifacts
+        shell: bash
+        run: |
+          IMAGE_URL="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          TAGS="${{ steps.meta.outputs.tags }}"
+          
+          echo "## 📦 Delivery Summary (GHCR)" >> $GITHUB_STEP_SUMMARY
+          echo "Image Name: \`${IMAGE_URL}\`" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "Successfully published the following tags:" >> $GITHUB_STEP_SUMMARY
+          
+          echo "$TAGS" | sed 's/^/* /' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Click [here to view the package]($IMAGE_URL) in GHCR." >> $GITHUB_STEP_SUMMARY
+
+  create_release:
+    needs: cd_publish 
+    runs-on: ubuntu-latest
+    
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    permissions:
+      contents: write 
+      
+    steps:
+      - name: Create Release Draft
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          generate_release_notes: true
