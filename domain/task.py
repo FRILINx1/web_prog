@@ -15,7 +15,7 @@ class Task(db.Model):  # ❗ ЗМІНА: Наслідуємо від db.Model
 
     # 1. Стовпці
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # ❗ FOREIGN KEY
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     title = db.Column(db.String(255), nullable=False)
 
     # Зберігаємо статус як рядок

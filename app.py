@@ -29,7 +29,15 @@ def create_initial_tables():
         import domain.user
         import domain.task
 
-        db.create_all()
+        with app.app_context():
+            print("--- INFO: Attempting database connection and table creation ---")
+            try:
+                db.create_all()
+                print("--- INFO: Database tables created successfully (or already exist) ---")
+            except Exception as e:
+                import sys
+                print(f"--- FATAL ERROR: Failed to create database tables: {e} ---", file=sys.stderr)
+                sys.exit(1)
 
 
 @app.before_request
@@ -82,17 +90,17 @@ def register():
         password = request.form["password"].encode("utf-8")
         hashed = bcrypt.hashpw(password, bcrypt.gensalt())
 
-        conn = get_db_connection()
+
         try:
             new_user = User(username=username, password=hashed)
             db.session.add(new_user)
             db.session.commit()
         except sqlite3.IntegrityError:
-            conn.close()
+
             return "Помилка: Користувач з таким логіном вже існує", 400
         except Exception as e:
             db.session.rollback()
-        conn.close()
+
         return redirect(url_for("login"))
     return render_template("register.html")
 
@@ -148,5 +156,6 @@ app.register_blueprint(tasks_api, url_prefix='/api/v1')
 
 if __name__ == "__main__":
     db.init_app(app)
-   # create_initial_tables()
-    app.run(debug=True)
+    create_initial_tables()
+    #app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)
