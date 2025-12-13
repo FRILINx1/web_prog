@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - master
+    tags: 
+      - 'v*'
   pull_request:
     branches:
       - main
@@ -12,21 +14,25 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  packages: write
-
+  contents: read 
+  packages: write 
+  
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-  
+
 env:
   REGISTRY: ghcr.io
+
   IMAGE_NAME: ${{ github.repository }}-api
   PYTHON_VERSION: 3.11
 
 jobs:
   ci_test:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -41,23 +47,18 @@ jobs:
         run: pip install -r requirements.txt
         
       - name: Run Pytest (Unit Tests)
-
         run: pytest tests/ 
 
       - name: Show Build Success (Test passed)
         run: echo "CI tests successful. Proceeding to delivery."
 
-
   cd_publish:
-    needs: ci_test 
+    needs: ci_test
     runs-on: ubuntu-latest
     
 
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    if: github.event_name == 'push' 
     
-    permissions:
-      contents: read
-      packages: write 
 
     steps:
       - name: Checkout Code
@@ -68,9 +69,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
-
           password: ${{ secrets.GITHUB_TOKEN }}
-
 
       - name: Set up Image Tags
         id: meta
@@ -78,11 +77,13 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=sha,format=short,prefix=sha-
+            # Тег 'latest' для main/master
             type=raw,value=latest,enable={{is_default_branch}}
+            # Тег на основі SHA коміту (приклад: sha-abc1234)
+            type=sha,format=short,prefix=sha-
+            # Тег на основі Git-тегів (v1.2.3)
             type=semver,pattern={{version}}
             type=semver,pattern={{raw}}
-
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
