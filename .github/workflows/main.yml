@@ -104,7 +104,7 @@ jobs:
           
           echo "$TAGS" | sed 's/^/* /' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Click [here to view the package]($IMAGE_URL) in GHCR." >> $GITHUB_STEP_SUMMARY
+
 
   create_release:
     needs: cd_publish 
