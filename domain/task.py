@@ -3,46 +3,38 @@ from datetime import datetime
 import uuid
 from extensions import db
 
-
 class TaskStatus(Enum):
-
     ACTIVE = "active"
     COMPLETED = "completed"
 
-
-class Task(db.Model):  # ❗ ЗМІНА: Наслідуємо від db.Model
+class Task(db.Model):
     __tablename__ = 'tasks'
+    __table_args__ = {'extend_existing': True}
 
-    # 1. Стовпці
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    title = db.Column(db.String(255), nullable=False)
-
-    # Зберігаємо статус як рядок
-    status = db.Column(db.Enum(TaskStatus), default=TaskStatus.ACTIVE, nullable=False)
-
+    title = db.Column(db.String(200), nullable=False)
+    status = db.Column(db.String(20), default=TaskStatus.ACTIVE.value)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=True)
+    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
 
     def mark_completed(self):
-
-        if self.status == TaskStatus.ACTIVE:
-            self.status = TaskStatus.COMPLETED
-            self.updated_at = datetime.now()
+        if self.status == TaskStatus.ACTIVE.value:
+            self.status = TaskStatus.COMPLETED.value
+            self.updated_at = datetime.utcnow()
 
     def update_title(self, new_title: str):
-
-        if new_title and new_title != self.title:
-            self.title = new_title
-            self.updated_at = datetime.now()
+        if new_title and new_title.strip() != self.title:
+            self.title = new_title.strip()
+            self.updated_at = datetime.utcnow()
 
     def to_dict(self):
-
         return {
             "id": self.id,
             "user_id": self.user_id,
             "title": self.title,
-            "is_completed": self.status == TaskStatus.COMPLETED,
-            "created_at": self.created_at.isoformat() + "Z",
-            "updated_at": self.updated_at.isoformat() + "Z" if self.updated_at else None
+            "status": self.status,
+            "is_completed": self.status == TaskStatus.COMPLETED.value,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Дашборд</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Мої завдання ({{ username }})</h2>
+        <a href="{{ url_for('logout') }}" class="btn btn-outline-danger">Вийти</a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Додати нове завдання</h5>
+            <form action="{{ url_for('add_task') }}" method="POST" class="row g-3">
+                <div class="col-auto">
+                    <input type="text" name="title" class="form-control" placeholder="Назва завдання" required>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Додати</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <h4>Список справ</h4>
+    <ul class="list-group">
+        {% for task in tasks %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            <span>{{ task.title }}</span>
+            <div class="d-flex gap-2">
+                <small class="text-muted me-3">{{ task.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                <form action="{{ url_for('delete_task_web', task_id=task.id) }}" method="POST" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Ви впевнені?')">Видалити</button>
+                </form>
+            </div>
+        </li>
+        {% else %}
+        <li class="list-group-item text-muted">Завдань ще немає. Додайте перше!</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
